@@ -10,11 +10,12 @@ import time
 uart = serial.Serial('/dev/ttyS1', 57600, timeout=0.5)
 
 # v4l2-ctlコマンドの実行
-# オートゲインとオートホワイトバランスをオフにする
 try:
+    print("v4l2-ctlコマンドを実行します")
     subprocess.run(['v4l2-ctl', '-d', '/dev/video0', '--set-ctrl', 'exposure_auto=1'], check=True)
+    print("オートゲインをオフにしました")
     subprocess.run(['v4l2-ctl', '-d', '/dev/video0', '--set-ctrl', 'white_balance_temperature_auto=0'], check=True)
-    print("v4l2-ctlコマンドを実行しました。")
+    print("オートホワイトバランスをオフにしました")
 except subprocess.CalledProcessError as e:
     print(f"v4l2-ctlコマンドの実行中にエラーが発生しました: {e}")
     sys.exit(1)
@@ -86,14 +87,15 @@ SidekickLeft = Packet(B4)
 class MotionTask:
     def __init__(self, uart):
         self.uart = uart
+        self.command_tmp = None
 
     def send_motion(self, x, y):
         x_left = 120
-        x_center_left = 250
+        x_center_left = 260
         x_center = 310
-        x_center_right = 370
+        x_center_right = 360
         x_right = 500
-        y_top = 280
+        y_top = 250
         y_bottom = 390
 
         if x <= x_center_left and y <= y_top:
@@ -128,9 +130,11 @@ class MotionTask:
             print("StepRight")
         else:
             command = CommandNone
-            print("CommandNone")            
+            print("CommandNone")
+            self.command_tmp = command
+        # モーション送出
         self.uart.write(command.to_bytes())
-        print("モーションを送出しました")
+        print("モーションに対応するボタン番号を送りました")
 
 # ボール検出
 class ColorTracker:
@@ -176,7 +180,7 @@ class ColorTracker:
 
         # 輪郭が検出されたか確認
         if len(contours) == 0:
-            print("輪郭が検出されませんでした。")
+            print("輪郭が検出されませんでした")
             return None, None, None, mask
     
         # 最大の輪郭を見つける
@@ -199,26 +203,42 @@ class ColorTracker:
         return center, radius, mass_center, mask
 
     def run(self):
+        log_dir = "/media/sdcard/log"
+        os.makedirs(log_dir, exist_ok=True)  # ディレクトリが存在しない場合は作成
+
+        # 連番のファイル名を作成
+        i = 0
         while True:
-            ret, frame = self.capture.read()
-            if not ret:
-                print("カメラから画像を取得できませんでした。")
+            log_file_path = os.path.join(log_dir, f"log_{i:03d}.txt") # ファイル名を3桁の数字でフォーマット
+            if not os.path.exists(log_file_path):
                 break
-            
-            center, radius, mass_center, mask = self.process(frame)
-            if center is None:
-                print("ボールが検出できませんでした。")
-                continue
-            
-            # 処理結果出力
-            print(f"外接円の中心座標: (x={center[0]}, y={center[1]})")
-            print(f"重心座標: (x={mass_center[0]}, y={mass_center[1]})")
-            print(f"輪郭の半径: {radius}ピクセル")
+            i += 1
+        
+        with open(log_file_path, "w") as f:
+            while True:
+                ret, frame = self.capture.read()
+                if not ret:
+                    print("カメラから画像を取得できませんでした")
+                    break
+                
+                center, radius, mass_center, mask = self.process(frame)
+                if center is None:
+                    print("ボールが検出できませんでした")
+                    continue
+                
+                # 処理結果出力
+                print(f"外接円の中心座標: (x={center[0]}, y={center[1]})")
+                print(f"重心座標: (x={mass_center[0]}, y={mass_center[1]})")
+                print(f"輪郭の半径: {radius}ピクセル")
 
-            # MotionTaskにボールの中心点座標を渡す
-            x, y = center
-            self.motiontask.send_motion(x, y)
+                # MotionTaskにボールの中心点座標を渡す
+                x, y = center
+                self.motiontask.send_motion(x, y)
 
+                # ログファイルに書き込み
+                output_log = f"{center[0]}, {center[1]}, {mass_center[0]}, {mass_center[1]}, {radius}\n"
+                f.write(output_log)
+            
         self.capture.release()
 
 motiontask = MotionTask(uart)
