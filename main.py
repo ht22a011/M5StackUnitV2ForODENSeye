@@ -90,13 +90,15 @@ class MotionTask:
         self.command_tmp = None
 
     def send_motion(self, x, y):
-        x_left = 120
-        x_center_left = 260
-        x_center = 310
-        x_center_right = 360
-        x_right = 500
+        x_left = 110
+        x_center_left = 245
+        x_center_left2 = 275
+        x_center = 300
+        x_center_right2 = 325
+        x_center_right = 355
+        x_right = 490
         y_top = 250
-        y_bottom = 380
+        y_bottom = 400
 
         if x <= x_center_left and y <= y_top:
             command = TurnLeftSmall
@@ -111,23 +113,29 @@ class MotionTask:
             command = StepLeft
             print("StepLeft")
         elif x_left < x <= x_center_left and y_top < y:
-            command = StepLeftSmall
-            print("StepLeftSmall")
-        elif x_center_left < x <= x_center and y_bottom < y:
+            command = StepLeft
+            print("StepLeft")
+        elif x_center_left < x <= x_center_left2 and y_bottom < y:
             command = KickLeft
             print("KickLeft")
         elif x_center_left < x <= x_center_right and y_top < y <= y_bottom:
             command = ForwardSmall
             print("ForwardSmall")
-        elif x_center < x <= x_center_right and y_bottom < y:
+        elif x_center_right2 < x <= x_center_right and y_bottom < y:
             command = KickRight
             print("KickRight")
         elif x_center_right < x <= x_right and y_top < y:
-            command = StepRightSmall
-            print("StepRightSmall")
+            command = StepRight
+            print("StepRight")
         elif x_right < x and y_top < y:
             command = StepRight
             print("StepRight")
+        elif x_center_left2 < x <= x_center and y_bottom < y:
+            command = StepRight
+            print("StepRight")
+        elif x_center < x <= x_center_right2 and y_bottom < y:
+            command = StepLeft
+            print("StepLeft")
         else:
             command = CommandNone
             print("CommandNone")
@@ -242,7 +250,7 @@ class ColorTracker:
         self.capture.release()
 
 def cleanup():
-    print("\nクリーンアップを実行します...")
+    print("\nクリーンアップを実行します")
     try:
         if 'tracker' in globals() and tracker.capture.isOpened():
             tracker.capture.release()
@@ -256,7 +264,7 @@ if __name__ == "__main__":
     try:
         motiontask = MotionTask(uart)
         tracker = ColorTracker(motiontask)
-        print("OpenCV バージョン: " + cv2.__version__)
+        print("OpenCV バージョン: " + cv2.__version__) # デバッグ用
         print("Start")
         tracker.run()
     except KeyboardInterrupt:
