@@ -96,7 +96,7 @@ class MotionTask:
         x_center_right = 360
         x_right = 500
         y_top = 250
-        y_bottom = 390
+        y_bottom = 380
 
         if x <= x_center_left and y <= y_top:
             command = TurnLeftSmall
@@ -241,9 +241,27 @@ class ColorTracker:
             
         self.capture.release()
 
-motiontask = MotionTask(uart)
-tracker = ColorTracker(motiontask)
-print("OpenCV バージョン: " + cv2.__version__) # デバッグ用
-print("Start")
-tracker.run()
-print("End")
+def cleanup():
+    print("\nクリーンアップを実行します...")
+    try:
+        if 'tracker' in globals() and tracker.capture.isOpened():
+            tracker.capture.release()
+        if 'uart' in globals() and uart.is_open:
+            uart.close()
+    except Exception as e:
+        print(f"クリーンアップ中にエラーが発生しました: {e}")
+    print("終了処理が完了しました")
+
+if __name__ == "__main__":
+    try:
+        motiontask = MotionTask(uart)
+        tracker = ColorTracker(motiontask)
+        print("OpenCV バージョン: " + cv2.__version__)
+        print("Start")
+        tracker.run()
+    except KeyboardInterrupt:
+        print("\nプログラムが中断されました")
+    except Exception as e:
+        print(f"エラーが発生しました: {e}")
+    finally:
+        cleanup()
